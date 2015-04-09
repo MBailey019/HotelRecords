@@ -6,6 +6,7 @@
 
 package hotelrecords;
 
+import static hotelrecords.Records.readFileToArray;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,11 +32,24 @@ class HotelRecords {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
+        List<List<String>> records = new ArrayList();
+        ArrayList<Integer> linesToSkip = new ArrayList();
+        while (records.isEmpty()){
+           try{
+               records = readFileToArray("records.txt", 4, linesToSkip );
+           }catch (BadDataException exception){
+               System.err.println("Exception: "+exception.getMsg());
+               linesToSkip.add(exception.getLineNumber());
+           }catch(FileNotFoundException exception ){
+               exception.printStackTrace(System.out);
+           }
+        }
+        ArrayList uniqueServices = Records.getUniqueValues(records, 1);
+        Records.totalServices(records, uniqueServices);
         try{
-          Records.totalServices("records.txt" );
-          Records.transactionsByService("records.txt");
-        }catch (FileNotFoundException e){
-            e.printStackTrace();
+            Records.transactionsByServiceList(records, uniqueServices);
+        }catch(FileNotFoundException exception){
+            exception.printStackTrace(System.out);
         }
     }
     

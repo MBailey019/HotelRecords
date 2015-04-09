@@ -19,11 +19,11 @@ import java.util.Scanner;
  * @author Matt Bailey    
  */
 public class Records {
-    
     /**
     * Reads flat file sales records into ArrayList      
     *
     * @param filename the name of the file to read.
+     * @param itemsPerLine
     * 
     * @param linesToSkip an array of lines to linesToSkip. Used for error handling.
     * 
@@ -36,68 +36,72 @@ public class Records {
     * Price must begin with '$'.
     * Date must be in format 'mm/dd/yy'.
     */
-    public static List<List<String>> readFileToArray(String filename, ArrayList<Integer> linesToSkip) throws FileNotFoundException, BadDataException{
+    public static List<List<String>> readFileToArray(String filename, int itemsPerLine, ArrayList<Integer> linesToSkip) throws FileNotFoundException, BadDataException{
         
-        List<List<String>> records = new ArrayList<>(4);
+        List<List<String>> processedRecords = new ArrayList<>(4);
         for (int i = 0; i<4; i++){
-            records.add( new ArrayList<String>(1) );
+            processedRecords.add( new ArrayList<String>(1) );
         }
         File inputFile = new File(filename);
-        Scanner flatFileRecords = new Scanner(inputFile);
+        Scanner flatFileRecordsReader = new Scanner(inputFile);
         Integer currentLineNumber = 1;
         String errorMessage = "";
-        while (flatFileRecords.hasNextLine()){
-            String currentLine = flatFileRecords.nextLine();
+        while (flatFileRecordsReader.hasNextLine()){
+            String currentLine = flatFileRecordsReader.nextLine();
             if (!linesToSkip.contains((Integer)currentLineNumber)){
                 boolean isProperFormat = true;
-                ArrayList<String> lineEntry = new ArrayList<String>(); 
-                Scanner lineScanner = new Scanner(currentLine).useDelimiter(";");
-                for (int i=0; i<4; i++){
-                    if (!lineScanner.hasNext()){
+                ArrayList<String> currentLineArrayEntry = new ArrayList<>(); 
+                Scanner currentLineReader = new Scanner(currentLine);
+                currentLineReader.useDelimiter(";");
+                for (int lineItem=0; lineItem<itemsPerLine; lineItem++){
+                    if (!currentLineReader.hasNext()){
                         isProperFormat = false;
-                        errorMessage = "Incomplete entry on line "+currentLineNumber+".";
+                        errorMessage = "Incomplete entry: line " + currentLineNumber;
                     } else {
-                        String item = lineScanner.next().trim();
-                        switch (i){
-                            case (0): if (item.contains("[0-9]")){
+                        String currentItem = currentLineReader.next().trim();
+                        switch (lineItem){
+                            case (0): if (currentItem.contains("[0-9]")){
                                 isProperFormat = false;
-                                errorMessage = "Name format error on line "+currentLineNumber+":\n Name must not contain numerical values";
+                                errorMessage = "Name format error: line " + currentLineNumber;
+                                errorMessage += ":\n Name must not contain numerical values";
                             }
                             break;
                             case (1): 
                             break;
-                            case (2): if (!item.matches("^\\$[0-9.]*")) {
+                            case (2): if (!currentItem.matches("^\\$[0-9.]*")) {
                                 isProperFormat = false;
-                                errorMessage = "Price format error on line "+currentLineNumber+":\n Price must begin with \"$\"";
+                                errorMessage = "Price format error on line " + currentLineNumber;
+                                errorMessage += ":\n Price must begin with \"$\"";
                             }
                             break;
-                            case (3): if (!item.matches("\\s*\\d\\d/\\d\\d/\\d\\d")){
+                            case (3): if (!currentItem.matches("\\s*\\d\\d/\\d\\d/\\d\\d")){
                                 isProperFormat = false;
-                                errorMessage = "Date format error on line "+currentLineNumber+":\n Date must be in format dd/mm/yy";
+                                errorMessage = "Date format error on line " + currentLineNumber;
+                                errorMessage += ":\n Date must be in format dd/mm/yy";
                             }
                             break;
                         }
-                        if (isProperFormat) lineEntry.add(item);
+                        if (isProperFormat) currentLineArrayEntry.add(currentItem);
                     }
                 }
                 if (!isProperFormat){
                     throw new BadDataException(currentLineNumber, errorMessage);
                 } else {
-                    for (int i = 0; i<4; i++){
-                        records.get(i).add(lineEntry.get(i));
+                    for (int itemIndex = 0; itemIndex<itemsPerLine; itemIndex++){
+                        String lineItem = currentLineArrayEntry.get(itemIndex);
+                        processedRecords.get(itemIndex).add(lineItem);
                     } 
                 }
-                lineScanner.close();
+                currentLineReader.close();
             }
             currentLineNumber++;
         }
-        flatFileRecords.close();
-        return records;
+        flatFileRecordsReader.close();
+        return processedRecords;
     }
     
     /**
-     * condenses a string down to only letters for comparison that neglects punctuation  
-     * 
+     * condenses a string down to only letters for comparison that neglects punctuation
      * @param value the String to be cleaned
      * @return a "clean" string
      */
@@ -108,13 +112,13 @@ public class Records {
     /**
      * Creates an ArrayList of unique values from a column in a multi-dimensional array.
      * 
-     * @param records the array
-     * @param column the column to analyze
+     * @param records
+     * @param focusColumn the column to analyze
      * @return an array of unique values
      */
-    public static ArrayList<String> getUniqueValues(List<List<String>> records, int column){
+    public static ArrayList<String> getUniqueValues(List<List<String>> records, int focusColumn){
         ArrayList<String> uniqueValues = new ArrayList();
-        for (String value : records.get(column)){
+        for (String value : records.get(focusColumn)){
             if (!uniqueValues.contains(cleanString(value).toUpperCase())){
                 uniqueValues.add(cleanString(value).toUpperCase());
             }
@@ -125,69 +129,50 @@ public class Records {
     /**
     * Displays the total sales for each category of service    
     * 
-    * @param filename the name of the file to read.
-     * @throws FileNotFoundException thrown if user cancels dialog. exits program if thrown;
+     * @param salesRecords
+     * @param uniqueServices
     *
     */
-    public static void totalServices(String filename) throws FileNotFoundException{
-        List<List<String>> records = new ArrayList();
-        ArrayList<Integer> skip = new ArrayList();
-        while (records.isEmpty()){
-           try{
-               records = readFileToArray(filename, skip );
-           }catch (BadDataException e){
-               System.err.println("Exception: "+e.getMsg());
-               skip.add(e.getLineNumber());
-           }
-        }
-        ArrayList<String> uniqueServices = Records.getUniqueValues(records, 1);
+    public static void totalServices(List<List<String>> salesRecords, 
+            ArrayList<String> uniqueServices){
+
         for ( String service : uniqueServices){
-            double total = 0;
-            for (int i = 0; i<records.get(0).size(); i++){
-                String columnValue = records.get(1).get(i);
+            double serviceTotal = 0;
+            for (int lineIndex = 0; lineIndex<salesRecords.get(0).size(); lineIndex++){
+                String columnValue = salesRecords.get(1).get(lineIndex);
                 columnValue = cleanString(columnValue).toUpperCase();
                 if (columnValue.equals(service)){
-                    String value = (records.get(2).get(i)).replaceAll("\\$", "");
-                    total += Double.parseDouble(value);
+                    String value = (salesRecords.get(2).get(lineIndex)).replaceAll("\\$", "");
+                    serviceTotal += Double.parseDouble(value);
                 }
             }
-            System.out.printf(service+": $%-3.2f \n",total);
+            System.out.printf(service+": $%-3.2f \n",serviceTotal);
         }
     }
     
    /**
     * Creates text file for each service category listing each transaction in that category;   
     * 
-    * @param filename the name of the file to read.
-     * @throws FileNotFoundException thrown if user cancels dialog. exits program if thrown;
+     * @param salesRecords
+     * @param uniqueServices
     *
     */
-    public static void transactionsByService(String filename) throws FileNotFoundException{
-        List<List<String>> records = new ArrayList();
-        ArrayList<Integer> skip = new ArrayList();
-        while (records.isEmpty()){
-           try{
-               records = Records.readFileToArray(filename, skip );
-           }catch (BadDataException e){
-               System.err.println("EXCEPTION: "+e.getMsg());
-               skip.add(e.getLineNumber());
-           }
-        }
-        ArrayList<String> uniqueServices = Records.getUniqueValues(records, 1);
+    public static void transactionsByServiceList(List<List<String>> salesRecords, 
+            ArrayList<String> uniqueServices) throws FileNotFoundException{
         for ( String service : uniqueServices){
             String cleanService = cleanString(service).toLowerCase();
             PrintWriter out = new PrintWriter(cleanService+".txt");
             out.println(service.toUpperCase());
             out.printf("\n| %4s | %30s | %10s | %8s |\n", "Line", "Name","Price","Date");
-            for (int i = 0; i<records.get(0).size(); i++){
-                String columnValue = records.get(1).get(i);
+            for (int lineIndex = 0; lineIndex<salesRecords.get(0).size(); lineIndex++){
+                String columnValue = salesRecords.get(1).get(lineIndex);
                 columnValue = cleanString(columnValue).toUpperCase();
                 if (columnValue.equals(service)){
-                    String name = records.get(0).get(i);
+                    String name = salesRecords.get(0).get(lineIndex);
                     if (name.length()>30) name = name.substring(0,27)+"...";
-                    Double price = Double.parseDouble((records.get(2).get(i)).replaceAll("\\$", ""));
-                    String date = records.get(3).get(i);
-                    out.printf("| %4d | %30.30s | $%-9.2f | %8.8s |\n", i, name, price, date);
+                    Double price = Double.parseDouble((salesRecords.get(2).get(lineIndex)).replaceAll("\\$", ""));
+                    String date = salesRecords.get(3).get(lineIndex);
+                    out.printf("| %4d | %30.30s | $%-9.2f | %8.8s |\n", lineIndex, name, price, date);
                 }
             }
             out.close();
