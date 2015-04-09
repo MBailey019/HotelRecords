@@ -1,0 +1,10 @@
+Bailey; Food; $2.4; 07/13/88;
+Matt Bailey; "Entertainment"; $10000.00; 07/13/88;
+Matt Bailey; "Entertainment"; 07/13/88;
+John jacobsen-nordimeyer-hawkins III; Food; $464.00; 12/01/85;
+max;food;"kubb";08/08/02;
+SUZUI Q.; Lodging; $1; 01/19/56;
+Paul Dirac ;   Conference     ; $19.42; 12/00/00; 
+Bill Bryson; Conference; $19.42; 12/00/00;
+Ken Kesey; "entertainment"; $69.99; 06/22/15;
+Slim Hawkins; food; $10.00; 05/13/99;
